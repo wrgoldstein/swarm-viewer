@@ -11,6 +11,7 @@
 	let loading = $state(false);
 	let error = $state(null);
 	let autoRefresh = $state(true);
+	let autoScroll = $state(false);
 	let scrollContainer = $state(null);
 	let expandedThinking = $state(new Set());
 	let selectedAgents = $state(new Set());
@@ -69,11 +70,21 @@
 				if (newEvents.length > 0) {
 					sessionData.events.push(...newEvents);
 
+					// Check for new agents in the new events
+					const newAgents = extractAgents(newEvents);
+					const addedAgents = newAgents.filter(agent => !availableAgents.includes(agent));
+					if (addedAgents.length > 0) {
+						availableAgents = [...availableAgents, ...addedAgents].sort();
+						selectedAgents = new Set([...selectedAgents, ...addedAgents]);
+					}
+
 					// Scroll to bottom after new events are added
-					// await tick();
-					// if (scrollContainer) {
-					// 	scrollContainer.scrollTop = scrollContainer.scrollHeight;
-					// }
+					if (autoScroll) {
+						await tick();
+						if (scrollContainer) {
+							scrollContainer.scrollTop = scrollContainer.scrollHeight;
+						}
+					}
 				}
 			}
 		} catch (err) {
@@ -116,9 +127,10 @@
 			const isToolResult = isToolResultFollowingToolUse(event, previousEvent);
 			const isAgentToAgentRequest = (eventType === 'request' && instanceInfo.from !== 'user') || isToolResult;
 			const isSystemInit = eventType === 'system' && event.event?.subtype === 'init';
+			const isSystemInstance = event.instance === 'system';
 			const toolOutput = isToolOutput(event);
 
-			return !isSystemInit && hasVisibleContent(content) && (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !toolOutput);
+			return !isSystemInit && !isSystemInstance && hasVisibleContent(content) && (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !toolOutput);
 		}).length;
 	}
 
@@ -130,6 +142,12 @@
 		}
 		selectedAgents = new Set(selectedAgents);
 	}
+
+	$effect(() => {
+		if (autoScroll && scrollContainer) {
+			scrollContainer.scrollTop = scrollContainer.scrollHeight;
+		}
+	});
 
 	onMount(() => {
 		loadSessions();
@@ -148,7 +166,7 @@
 			}
 			// Update current time for live duration calculation
 			currentTime = Date.now();
-		}, 2000);
+		}, 1000);
 
 		return () => clearInterval(interval);
 	});
@@ -252,6 +270,10 @@
 					<input type="checkbox" bind:checked={autoRefresh} class="rounded border-gray-300" />
 					Auto-refresh
 				</label>
+				<label class="flex items-center gap-2 text-sm text-gray-600">
+					<input type="checkbox" bind:checked={autoScroll} class="rounded border-gray-300" />
+					Auto-scroll
+				</label>
 			</div>
 		</div>
 	</header>
@@ -310,21 +332,28 @@
 					<!-- Events Stream with Minimap -->
 					<div class="flex-1 flex overflow-hidden">
 						<div bind:this={scrollContainer} class="flex-1 overflow-y-auto p-6 space-y-3">
-							{#each sessionData.events as event, i (event.event_id)}
-								{@const eventType = getEventType(event)}
-								{@const instanceInfo = getInstanceInfo(event)}
-								{@const content = getMessageContent(event)}
-								{@const previousEvent = i > 0 ? sessionData.events[i - 1] : null}
-								{@const isToolResult = isToolResultFollowingToolUse(event, previousEvent)}
-								{@const isAgentToAgentRequest = (eventType === 'request' && instanceInfo.from !== 'user') || isToolResult}
-								{@const isSystemInit = eventType === 'system' && event.event?.subtype === 'init'}
-								{@const toolOutput = isToolOutput(event)}
-								{@const isVisible = !isSystemInit && isAgentSelected(event) && hasVisibleContent(content) && (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !toolOutput)}
+							{#if countVisibleMessages(sessionData.events) === 0}
+								<div class="flex items-center justify-center h-full">
+									<div class="text-gray-400 text-sm">No messages to display</div>
+								</div>
+							{:else}
+								{#each sessionData.events as event, i (event.event_id)}
+									{@const eventType = getEventType(event)}
+									{@const instanceInfo = getInstanceInfo(event)}
+									{@const content = getMessageContent(event)}
+									{@const previousEvent = i > 0 ? sessionData.events[i - 1] : null}
+									{@const isToolResult = isToolResultFollowingToolUse(event, previousEvent)}
+									{@const isAgentToAgentRequest = (eventType === 'request' && instanceInfo.from !== 'user') || isToolResult}
+									{@const isSystemInit = eventType === 'system' && event.event?.subtype === 'init'}
+									{@const isSystemInstance = event.instance === 'system'}
+									{@const toolOutput = isToolOutput(event)}
+									{@const isVisible = !isSystemInit && !isSystemInstance && isAgentSelected(event) && hasVisibleContent(content) && (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !toolOutput)}
 
-								{#if isVisible}
-									<EventMessage {event} sessionId={decodeURIComponent(sessionData.id.replace(/\+/g, "/"))} eventIndex={i} {expandedThinking} />
-								{/if}
-							{/each}
+									{#if isVisible}
+										<EventMessage {event} sessionId={decodeURIComponent(sessionData.id.replace(/\+/g, "/"))} eventIndex={i} {expandedThinking} />
+									{/if}
+								{/each}
+							{/if}
 						</div>
 						<Minimap events={sessionData.events} {scrollContainer} {selectedAgents} />
 					</div>
@@ -332,7 +361,6 @@
 			{:else}
 				<div class="flex-1 flex items-center justify-center">
 					<div class="text-center text-gray-400">
-						<div class="text-4xl mb-4">👈</div>
 						<div>Select a session to view</div>
 					</div>
 				</div>
