@@ -16,32 +16,18 @@
 		if (lines.length < 3) return false;
 		return lines.slice(0, 3).every(line => /^\s+\d+→/.test(line) || line.trim() === '');
 	}
-
-	function isSystemMessage(text) {
-		// Detect Ruby Logger format: "I, [timestamp #pid]  INFO -- logger_name:"
-		return /^[A-Z],\s*\[[\d\-T:\.]+\s+#\d+\]\s+(INFO|DEBUG|WARN|ERROR|FATAL)\s+--\s+[\w_]+:\s*\{/.test(text);
-	}
-
-	function stripSystemMessage(text) {
-		if (!isSystemMessage(text)) return text;
-
-		// Remove the logger prefix and return just the content
-		const match = text.match(/^[A-Z],\s*\[[\d\-T:\.]+\s+#\d+\]\s+(INFO|DEBUG|WARN|ERROR|FATAL)\s+--\s+[\w_]+:\s*([\s\S]*)$/);
-		return match ? match[2] : text;
-	}
 </script>
 
 {#if block.type === 'text'}
-	{@const cleanedText = stripSystemMessage(block.text)}
-	{#if isFileContent(cleanedText)}
+	{#if isFileContent(block.text)}
 		<div class="bg-gray-50 rounded border border-gray-200 overflow-hidden">
 			<div class="bg-white px-3 py-2 border-b border-gray-200">
 				<span class="text-xs font-mono text-gray-500 uppercase tracking-wide">File Content</span>
 			</div>
-			<pre class="text-xs text-gray-800 font-mono overflow-x-auto p-4 leading-relaxed">{cleanedText}</pre>
+			<pre class="text-xs text-gray-800 font-mono overflow-x-auto p-4 leading-relaxed">{block.text}</pre>
 		</div>
 	{:else}
-		<pre class="text-sm text-gray-800 whitespace-pre-wrap font-mono overflow-x-auto leading-relaxed">{cleanedText}</pre>
+		<pre class="text-sm text-gray-800 whitespace-pre-wrap font-mono overflow-x-auto leading-relaxed">{block.text}</pre>
 	{/if}
 {:else if block.type === 'tool_use'}
 	<div>
