@@ -15,6 +15,7 @@
 	let expandedThinking = $state(new Set());
 	let selectedAgents = $state(new Set());
 	let availableAgents = $state([]);
+	let currentTime = $state(Date.now());
 
 	async function loadSessions() {
 		try {
@@ -93,13 +94,13 @@
 		return `${mins}m ${secs}s`;
 	}
 
-	function calculateSessionDuration(sessionData) {
+	function calculateSessionDuration(sessionData, now) {
 		if (!sessionData?.metadata) return null;
 
 		const startTime = new Date(sessionData.metadata.start_time).getTime();
 		const endTime = sessionData.metadata.end_time
 			? new Date(sessionData.metadata.end_time).getTime()
-			: Date.now();
+			: now;
 
 		return Math.floor((endTime - startTime) / 1000);
 	}
@@ -145,6 +146,8 @@
 					}
 				}
 			}
+			// Update current time for live duration calculation
+			currentTime = Date.now();
 		}, 2000);
 
 		return () => clearInterval(interval);
@@ -287,7 +290,7 @@
 								</div>
 								<div class="text-right">
 									<div class="text-gray-500 text-xs uppercase tracking-wide">Duration</div>
-									<div class="text-2xl font-light text-gray-900 tabular-nums">{formatDuration(calculateSessionDuration(sessionData))}</div>
+									<div class="text-2xl font-light text-gray-900 tabular-nums">{formatDuration(calculateSessionDuration(sessionData, currentTime))}</div>
 								</div>
 							</div>
 						</div>

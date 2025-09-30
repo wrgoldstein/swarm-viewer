@@ -1,23 +1,24 @@
 // Centralized agent color utilities for consistent coloring across the app
-// Using ColorBrewer Set3 palette for better visual distinction
+// Carefully curated palette for light mode with maximum distinction
+// Colors are ordered to ensure dissimilar colors are assigned sequentially
 
 export const agentColorPalette = [
-	{ hex: '#a6cee3' },
-	{ hex: '#1f78b4' },
-	{ hex: '#b2df8a' },
-	{ hex: '#33a02c' },
-	{ hex: '#fb9a99' },
-	{ hex: '#e31a1c' },
-	{ hex: '#fdbf6f' },
-	{ hex: '#ff7f00' },
-	{ hex: '#cab2d6' },
-	{ hex: '#6a3d9a' },
-	{ hex: '#ffff99' },
-	{ hex: '#b15928' }
+	{ hex: '#0066cc' },  // blue
+	{ hex: '#d94f00' },  // orange
+	{ hex: '#7c3f8f' },  // purple
+	{ hex: '#00a86b' },  // green
+	{ hex: '#dc143c' },  // crimson
+	{ hex: '#1e6f8f' },  // teal
+	{ hex: '#c77700' },  // amber
+	{ hex: '#8b4789' },  // violet
+	{ hex: '#2d7a3e' },  // forest green
+	{ hex: '#b8336a' },  // magenta
+	{ hex: '#005f8c' },  // navy
+	{ hex: '#a85300' },  // burnt orange
 ];
 
 export const defaultColor = {
-	hex: '#ff7f00' // orange for user/system
+	hex: '#6b7280' // neutral gray for user/system
 };
 
 // Track assigned colors to avoid reuse
