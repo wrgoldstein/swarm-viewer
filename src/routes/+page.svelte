@@ -17,7 +17,8 @@
 		try {
 			const response = await fetch('/api/sessions');
 			const data = await response.json();
-			sessions = data;
+			// Filter out sessions shorter than 30 seconds
+			sessions = data.filter(session => !session.duration_seconds || session.duration_seconds >= 30);
 		} catch (err) {
 			error = err.message;
 		}
@@ -29,30 +30,28 @@
 	}
 
 	async function loadSession(sessionId) {
-		// loading = true;
-		// error = null;
-
-		// Save scroll position before loading
-
 		try {
 			const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`);
 			const data = await response.json();
-			// sessionData = data
+			// console.log(data)
 
 			if (!sessionData || sessionData.id !== sessionId){
 				// New session selected, load completely
-				console.log('???')
 				sessionData = data
 			} else {
 				// Same session, append only new events
 				const existingCount = sessionData.events.length;
-				console.log(existingCount)
 				const newEvents = data.events.slice(existingCount);
 				if (newEvents.length > 0) {
 					sessionData.events.push(...newEvents);
+
+					// Scroll to bottom after new events are added
+					await tick();
+					if (scrollContainer) {
+						scrollContainer.scrollTop = scrollContainer.scrollHeight;
+					}
 				}
 			}
-			// selectedSessionId = sessionId;
 		} catch (err) {
 			error = err.message;
 		} finally {
@@ -95,22 +94,30 @@
 		return event.event?.type || event.type || 'unknown';
 	}
 
-	function isToolResultRequest(event) {
-		const prompt = event.event?.prompt;
-		if (!prompt || typeof prompt !== 'string') return false;
-		return prompt.includes('"type" =>') ||
-		       (prompt.startsWith('{') && prompt.includes('"type"') && prompt.includes('"text"'));
-	}
-
 	function getInstanceInfo(event) {
 		const eventType = event.event?.type || event.type;
 		if (eventType === 'request') {
 			const from = event.event?.from_instance || 'user';
 			const to = event.event?.to_instance || event.instance;
-			return { from, to, isToolResult: isToolResultRequest(event) };
+			return { from, to, isToolResult: false };
 		} else {
 			return { from: event.instance, to: null, isToolResult: false };
 		}
+	}
+
+	function isToolResultFollowingToolUse(currentEvent, previousEvent) {
+		// Check if current event is a request from "user"
+		const currentType = currentEvent.event?.type || currentEvent.type;
+		const currentFrom = currentEvent.event?.from_instance;
+		if (currentType !== 'request' || currentFrom !== 'user') {
+			return false;
+		}
+
+		// Check if previous event is a "result" type (from an agent execution)
+		if (!previousEvent) return false;
+		const prevType = previousEvent.event?.type || previousEvent.type;
+
+		return prevType === 'result';
 	}
 
 	function getMessageContent(event) {
@@ -189,11 +196,14 @@
 						{@const eventType = getEventType(event)}
 						{@const instanceInfo = getInstanceInfo(event)}
 						{@const content = getMessageContent(event)}
-						{@const isAgentToAgentRequest = (eventType === 'request' && instanceInfo.from !== 'user') || instanceInfo.isToolResult}
-						{@const isVisible = hasVisibleContent(content, showAll) && (showAll || (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest))}
+						{@const previousEvent = i > 0 ? sessionData.events[i - 1] : null}
+						{@const isToolResult = isToolResultFollowingToolUse(event, previousEvent)}
+						{@const isAgentToAgentRequest = (eventType === 'request' && instanceInfo.from !== 'user') || isToolResult}
+						{@const isSubAgentExecution = event.calling_instance != null}
+						{@const isVisible = hasVisibleContent(content, showAll) && (showAll || (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !isSubAgentExecution))}
 
 						{#if isVisible}
-							<EventMessage {event} sessionId={sessionData.id} eventIndex={i} {showAll} {expandedThinking} />
+							<EventMessage {event} sessionId={sessionData.id} eventIndex={i} {showAll} {expandedThinking} {isSubAgentExecution} />
 						{/if}
 					{/each}
 				</div>

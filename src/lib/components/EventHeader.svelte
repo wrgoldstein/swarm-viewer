@@ -1,5 +1,5 @@
 <script>
-	let { event } = $props();
+	let { event, isSubAgentExecution = false } = $props();
 
 	const agentColorPalette = [
 		'text-cyan-400',
@@ -58,6 +58,11 @@
 </script>
 
 <div class="flex items-center gap-3 px-4 py-2 bg-gray-750 border-b border-gray-700">
+	{#if isSubAgentExecution}
+		<span class="text-xs px-2 py-0.5 rounded bg-purple-900 text-purple-300 border border-purple-700">
+			sub-agent
+		</span>
+	{/if}
 	{#if instanceInfo.to}
 		<span class="text-sm font-semibold">
 			<span class={getAgentColor(instanceInfo.from)}>{instanceInfo.from}</span>

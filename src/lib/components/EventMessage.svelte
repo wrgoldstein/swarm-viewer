@@ -2,7 +2,7 @@
 	import EventHeader from './EventHeader.svelte';
 	import ContentBlock from './ContentBlock.svelte';
 
-	let { event, sessionId, eventIndex, showAll = false, expandedThinking } = $props();
+	let { event, sessionId, eventIndex, showAll = false, expandedThinking, isSubAgentExecution = false } = $props();
 
 	function getMessageContent(event) {
 		if (event.event?.message?.content) {
@@ -21,8 +21,8 @@
 	const content = getMessageContent(event);
 </script>
 
-<div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-	<EventHeader {event} />
+<div class="bg-gray-800 rounded-lg border overflow-hidden {isSubAgentExecution ? 'border-l-4 border-l-purple-500 border-r-gray-700 border-t-gray-700 border-b-gray-700 ml-8' : 'border-gray-700'}">
+	<EventHeader {event} {isSubAgentExecution} />
 
 	<!-- Event Content -->
 	<div class="p-4 space-y-2">
