@@ -40,7 +40,7 @@
 	</div>
 {:else}
 	<!-- Full header for regular messages -->
-	<div class="flex items-center gap-3 px-5 py-3 bg-gray-50 border-b border-gray-200">
+	<div class="flex items-center gap-3 px-5 py-1 bg-gray-50 border-b border-gray-200">
 		{#if instanceInfo.to}
 			<span class="text-sm font-light">
 				<span style="color: {getAgentHexColor(instanceInfo.from)}">{instanceInfo.from}</span>
