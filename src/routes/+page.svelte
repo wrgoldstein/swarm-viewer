@@ -200,7 +200,8 @@
 						{@const isToolResult = isToolResultFollowingToolUse(event, previousEvent)}
 						{@const isAgentToAgentRequest = (eventType === 'request' && instanceInfo.from !== 'user') || isToolResult}
 						{@const isSubAgentExecution = event.calling_instance != null}
-						{@const isVisible = hasVisibleContent(content, showAll) && (showAll || (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !isSubAgentExecution))}
+						{@const isSystemInit = eventType === 'system' && event.event?.subtype === 'init'}
+						{@const isVisible = !isSystemInit && hasVisibleContent(content, showAll) && (showAll || (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !isSubAgentExecution))}
 
 						{#if isVisible}
 							<EventMessage {event} sessionId={sessionData.id} eventIndex={i} {showAll} {expandedThinking} {isSubAgentExecution} />

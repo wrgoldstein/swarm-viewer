@@ -2,14 +2,10 @@
 	let { block, sessionId, eventIndex, blockIdx, showAll = false, expandedThinking } = $props();
 
 	const blockKey = `${sessionId}-${eventIndex}-${blockIdx}`;
-	const isExpanded = $derived(expandedThinking.has(blockKey));
+	let isExpanded = $state(false)
 
 	function toggleExpanded() {
-		if (isExpanded) {
-			expandedThinking.delete(blockKey);
-		} else {
-			expandedThinking.add(blockKey);
-		}
+		isExpanded = !isExpanded
 	}
 </script>
 
