@@ -2,6 +2,8 @@
 	import { onMount, tick } from 'svelte';
 	import SessionList from '$lib/components/SessionList.svelte';
 	import EventMessage from '$lib/components/EventMessage.svelte';
+	import Minimap from '$lib/components/Minimap.svelte';
+	import { getAgentTextColor, getAgentBgColor, getAgentBorderColor, resetColorAssignments } from '$lib/utils/agentColors.js';
 
 	let sessions = $state([]);
 	let selectedSessionId = $state(null);
@@ -9,9 +11,10 @@
 	let loading = $state(false);
 	let error = $state(null);
 	let autoRefresh = $state(true);
-	let showAll = $state(false);
 	let scrollContainer = $state(null);
 	let expandedThinking = $state(new Set());
+	let selectedAgents = $state(new Set());
+	let availableAgents = $state([]);
 
 	async function loadSessions() {
 		try {
@@ -24,8 +27,26 @@
 		}
 	}
 
+	function extractAgents(events) {
+		const agents = new Set();
+		events.forEach(event => {
+			const eventType = event.event?.type || event.type;
+			if (eventType === 'request') {
+				const from = event.event?.from_instance || 'user';
+				const to = event.event?.to_instance || event.instance;
+				agents.add(from);
+				agents.add(to);
+			} else {
+				const instance = event.instance || 'system';
+				agents.add(instance);
+			}
+		});
+		return Array.from(agents).sort();
+	}
+
 	async function startSession(sessionId){
 		selectedSessionId = sessionId
+		resetColorAssignments() // Reset colors for new session
 		loadSession(sessionId)
 	}
 
@@ -38,6 +59,8 @@
 			if (!sessionData || sessionData.id !== sessionId){
 				// New session selected, load completely
 				sessionData = data
+			availableAgents = extractAgents(data.events);
+			selectedAgents = new Set(availableAgents);
 			} else {
 				// Same session, append only new events
 				const existingCount = sessionData.events.length;
@@ -68,6 +91,43 @@
 		const mins = Math.floor(seconds / 60);
 		const secs = seconds % 60;
 		return `${mins}m ${secs}s`;
+	}
+
+	function calculateSessionDuration(sessionData) {
+		if (!sessionData?.metadata) return null;
+
+		const startTime = new Date(sessionData.metadata.start_time).getTime();
+		const endTime = sessionData.metadata.end_time
+			? new Date(sessionData.metadata.end_time).getTime()
+			: Date.now();
+
+		return Math.floor((endTime - startTime) / 1000);
+	}
+
+	function countVisibleMessages(events) {
+		if (!events) return 0;
+
+		return events.filter((event, i) => {
+			const eventType = getEventType(event);
+			const instanceInfo = getInstanceInfo(event);
+			const content = getMessageContent(event);
+			const previousEvent = i > 0 ? events[i - 1] : null;
+			const isToolResult = isToolResultFollowingToolUse(event, previousEvent);
+			const isAgentToAgentRequest = (eventType === 'request' && instanceInfo.from !== 'user') || isToolResult;
+			const isSystemInit = eventType === 'system' && event.event?.subtype === 'init';
+			const toolOutput = isToolOutput(event);
+
+			return !isSystemInit && hasVisibleContent(content) && (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !toolOutput);
+		}).length;
+	}
+
+	function toggleAgent(agent) {
+		if (selectedAgents.has(agent)) {
+			selectedAgents.delete(agent);
+		} else {
+			selectedAgents.add(agent);
+		}
+		selectedAgents = new Set(selectedAgents);
 	}
 
 	onMount(() => {
@@ -105,6 +165,23 @@
 		}
 	}
 
+	function isToolOutput(event) {
+		const eventType = event.event?.type || event.type;
+		const fromInstance = event.event?.from_instance;
+
+		if (eventType !== 'request' || fromInstance !== 'user') {
+			return false;
+		}
+
+		const prompt = event.event?.prompt;
+		if (typeof prompt !== 'string' || prompt.length === 0) {
+			return false;
+		}
+
+		// Tool outputs typically start with { or whitespace, or are very long (500+ chars)
+		return prompt[0] === '{' || prompt[0] === ' ' || prompt.length >= 500;
+	}
+
 	function isToolResultFollowingToolUse(currentEvent, previousEvent) {
 		// Check if current event is a request from "user"
 		const currentType = currentEvent.event?.type || currentEvent.type;
@@ -134,7 +211,7 @@
 		return JSON.stringify(event, null, 2);
 	}
 
-	function hasVisibleContent(content, showAllFlag) {
+	function hasVisibleContent(content) {
 		if (!Array.isArray(content)) {
 			return content && content.toString().trim().length > 0;
 		}
@@ -142,11 +219,23 @@
 			if (block.type === 'text') {
 				return block.text && block.text.trim().length > 0;
 			}
-			if (block.type === 'tool_result' || block.type === 'tool_use' || block.type === 'thinking') {
-				return showAllFlag;
+			if (block.type === 'tool_use' || block.type === 'tool_result') {
+				return true;
 			}
-			return showAllFlag;
+			return false;
 		});
+	}
+
+	function isAgentSelected(event) {
+		const eventType = event.event?.type || event.type;
+		if (eventType === 'request') {
+			const from = event.event?.from_instance || 'user';
+			const to = event.event?.to_instance || event.instance;
+			return selectedAgents.has(from) || selectedAgents.has(to);
+		} else {
+			const instance = event.instance || 'system';
+			return selectedAgents.has(instance);
+		}
 	}
 </script>
 
@@ -156,10 +245,6 @@
 		<div class="flex items-center justify-between">
 			<h1 class="text-2xl font-bold text-blue-400">Claude Swarm Viewer</h1>
 			<div class="flex items-center gap-4">
-				<label class="flex items-center gap-2 text-sm">
-					<input type="checkbox" bind:checked={showAll} class="rounded" />
-					Show all details
-				</label>
 				<label class="flex items-center gap-2 text-sm">
 					<input type="checkbox" bind:checked={autoRefresh} class="rounded" />
 					Auto-refresh
@@ -172,7 +257,7 @@
 		<SessionList {sessions} {selectedSessionId} onSelectSession={startSession} />
 
 		<!-- Main Content -->
-		<main class="flex-1 flex flex-col overflow-hidden">
+		<main class="flex-1 flex overflow-hidden">
 			{#if loading}
 				<div class="flex-1 flex items-center justify-center">
 					<div class="text-gray-400">Loading session...</div>
@@ -182,31 +267,64 @@
 					<div class="text-red-400">Error: {error}</div>
 				</div>
 			{:else if sessionData}
-				<!-- Session Header -->
-				<div class="bg-gray-800 border-b border-gray-700 p-4">
-					<h2 class="text-xl font-semibold text-gray-100">{sessionData.metadata.swarm_name}</h2>
-					<div class="text-sm text-gray-400 mt-1">
-						{sessionData.metadata.root_directory}
+				<div class="flex-1 flex flex-col overflow-hidden">
+					<!-- Session Header -->
+					<div class="bg-gray-800 border-b border-gray-700 p-4">
+						<div class="flex items-start justify-between">
+							<div class="flex-1">
+								<h2 class="text-xl font-semibold text-gray-100">{sessionData.metadata.swarm_name}</h2>
+								<div class="text-sm text-gray-400 mt-1">
+									{sessionData.metadata.root_directory}
+								</div>
+								<div class="text-xs text-gray-500 font-mono mt-1">
+									{decodeURIComponent(sessionData.id.replace(/\+/g, "/"))}
+								</div>
+							</div>
+							<div class="flex gap-4 text-sm">
+								<div class="text-right">
+									<div class="text-gray-400">Messages</div>
+									<div class="text-lg font-semibold text-gray-100">{countVisibleMessages(sessionData.events)}</div>
+								</div>
+								<div class="text-right">
+									<div class="text-gray-400">Duration</div>
+									<div class="text-lg font-semibold text-gray-100">{formatDuration(calculateSessionDuration(sessionData))}</div>
+								</div>
+							</div>
+						</div>
+						<div class="flex flex-wrap gap-2 mt-3">
+							{#each availableAgents as agent}
+								<button
+									onclick={() => toggleAgent(agent)}
+									class="px-3 py-1 text-xs font-medium rounded-full border-2 transition-colors bg-transparent {selectedAgents.has(agent) ? '' : 'border-gray-600 text-gray-500 hover:border-gray-500 hover:text-gray-400'}"
+									style={selectedAgents.has(agent) ? `border-color: ${getAgentBorderColor(agent)}; color: ${getAgentTextColor(agent)};` : ''}
+								>
+									{agent}
+								</button>
+							{/each}
+						</div>
 					</div>
-				</div>
 
-				<!-- Events Stream -->
-				<div bind:this={scrollContainer} class="flex-1 overflow-y-auto p-4 space-y-2">
-					{#each sessionData.events as event, i (event.event_id)}
-						{@const eventType = getEventType(event)}
-						{@const instanceInfo = getInstanceInfo(event)}
-						{@const content = getMessageContent(event)}
-						{@const previousEvent = i > 0 ? sessionData.events[i - 1] : null}
-						{@const isToolResult = isToolResultFollowingToolUse(event, previousEvent)}
-						{@const isAgentToAgentRequest = (eventType === 'request' && instanceInfo.from !== 'user') || isToolResult}
-						{@const isSubAgentExecution = event.calling_instance != null}
-						{@const isSystemInit = eventType === 'system' && event.event?.subtype === 'init'}
-						{@const isVisible = !isSystemInit && hasVisibleContent(content, showAll) && (showAll || (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !isSubAgentExecution))}
+					<!-- Events Stream with Minimap -->
+					<div class="flex-1 flex overflow-hidden">
+						<div bind:this={scrollContainer} class="flex-1 overflow-y-auto p-4 space-y-2">
+							{#each sessionData.events as event, i (event.event_id)}
+								{@const eventType = getEventType(event)}
+								{@const instanceInfo = getInstanceInfo(event)}
+								{@const content = getMessageContent(event)}
+								{@const previousEvent = i > 0 ? sessionData.events[i - 1] : null}
+								{@const isToolResult = isToolResultFollowingToolUse(event, previousEvent)}
+								{@const isAgentToAgentRequest = (eventType === 'request' && instanceInfo.from !== 'user') || isToolResult}
+								{@const isSystemInit = eventType === 'system' && event.event?.subtype === 'init'}
+								{@const toolOutput = isToolOutput(event)}
+								{@const isVisible = !isSystemInit && isAgentSelected(event) && hasVisibleContent(content) && (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !toolOutput)}
 
-						{#if isVisible}
-							<EventMessage {event} sessionId={sessionData.id} eventIndex={i} {showAll} {expandedThinking} {isSubAgentExecution} />
-						{/if}
-					{/each}
+								{#if isVisible}
+									<EventMessage {event} sessionId={decodeURIComponent(sessionData.id.replace(/\+/g, "/"))} eventIndex={i} {expandedThinking} />
+								{/if}
+							{/each}
+						</div>
+						<Minimap events={sessionData.events} {scrollContainer} {selectedAgents} />
+					</div>
 				</div>
 			{:else}
 				<div class="flex-1 flex items-center justify-center">
