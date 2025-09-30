@@ -7,6 +7,9 @@
 	let minimapHeight = $state(0);
 	let viewportIndicatorTop = $state(0);
 	let viewportIndicatorHeight = $state(0);
+	let isDragging = $state(false);
+	let dragStartY = $state(0);
+	let dragStartScroll = $state(0);
 
 	function getEventAgent(event) {
 		const eventType = event.event?.type || event.type;
@@ -43,6 +46,32 @@
 		viewportIndicatorHeight = heightPercent;
 	}
 
+	function startDrag(e) {
+		e.stopPropagation();
+		isDragging = true;
+		dragStartY = e.clientY;
+		dragStartScroll = scrollContainer.scrollTop;
+	}
+
+	function onDrag(e) {
+		if (!isDragging || !scrollContainer) return;
+
+		const minimapElement = document.getElementById('minimap');
+		if (!minimapElement) return;
+
+		const rect = minimapElement.getBoundingClientRect();
+		const deltaY = e.clientY - dragStartY;
+		const deltaPercent = deltaY / rect.height;
+		const scrollHeight = scrollContainer.scrollHeight;
+		const deltaScroll = deltaPercent * scrollHeight;
+
+		scrollContainer.scrollTop = dragStartScroll + deltaScroll;
+	}
+
+	function stopDrag() {
+		isDragging = false;
+	}
+
 	function scrollToPosition(clickY) {
 		if (!scrollContainer) return;
 
@@ -66,12 +95,18 @@
 			// Update on window resize
 			window.addEventListener('resize', updateViewportIndicator);
 
+			// Handle dragging at window level
+			window.addEventListener('mousemove', onDrag);
+			window.addEventListener('mouseup', stopDrag);
+
 			// Initial update
 			updateViewportIndicator();
 
 			return () => {
 				scrollContainer.removeEventListener('scroll', updateViewportIndicator);
 				window.removeEventListener('resize', updateViewportIndicator);
+				window.removeEventListener('mousemove', onDrag);
+				window.removeEventListener('mouseup', stopDrag);
 			};
 		}
 	});
@@ -121,7 +156,11 @@
 
 	<!-- Viewport indicator -->
 	<div
-		class="absolute w-full border border-gray-900 bg-gray-900/5 pointer-events-none"
+		class="absolute w-full border border-gray-900 bg-gray-900/5 {isDragging ? 'cursor-grabbing' : 'cursor-grab'}"
 		style="top: {viewportIndicatorTop}%; height: {viewportIndicatorHeight}%;"
+		onmousedown={startDrag}
+		role="slider"
+		tabindex="0"
+		aria-label="Viewport position"
 	></div>
 </div>
