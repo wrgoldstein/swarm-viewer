@@ -69,10 +69,10 @@
 					sessionData.events.push(...newEvents);
 
 					// Scroll to bottom after new events are added
-					await tick();
-					if (scrollContainer) {
-						scrollContainer.scrollTop = scrollContainer.scrollHeight;
-					}
+					// await tick();
+					// if (scrollContainer) {
+					// 	scrollContainer.scrollTop = scrollContainer.scrollHeight;
+					// }
 				}
 			}
 		} catch (err) {
@@ -239,14 +239,14 @@
 	}
 </script>
 
-<div class="h-screen flex flex-col bg-gray-900 text-gray-100">
+<div class="h-screen flex flex-col bg-white text-gray-900">
 	<!-- Header -->
-	<header class="bg-gray-800 border-b border-gray-700 p-4">
+	<header class="bg-white border-b border-gray-200 px-6 py-4">
 		<div class="flex items-center justify-between">
-			<h1 class="text-2xl font-bold text-blue-400">Claude Swarm Viewer</h1>
+			<h1 class="text-xl tracking-tight text-gray-900">Claude Swarm</h1>
 			<div class="flex items-center gap-4">
-				<label class="flex items-center gap-2 text-sm">
-					<input type="checkbox" bind:checked={autoRefresh} class="rounded" />
+				<label class="flex items-center gap-2 text-sm text-gray-600">
+					<input type="checkbox" bind:checked={autoRefresh} class="rounded border-gray-300" />
 					Auto-refresh
 				</label>
 			</div>
@@ -257,45 +257,45 @@
 		<SessionList {sessions} {selectedSessionId} onSelectSession={startSession} />
 
 		<!-- Main Content -->
-		<main class="flex-1 flex overflow-hidden">
+		<main class="flex-1 flex overflow-hidden bg-gray-50">
 			{#if loading}
 				<div class="flex-1 flex items-center justify-center">
-					<div class="text-gray-400">Loading session...</div>
+					<div class="text-gray-500">Loading session...</div>
 				</div>
 			{:else if error}
 				<div class="flex-1 flex items-center justify-center">
-					<div class="text-red-400">Error: {error}</div>
+					<div class="text-red-600">Error: {error}</div>
 				</div>
 			{:else if sessionData}
 				<div class="flex-1 flex flex-col overflow-hidden">
 					<!-- Session Header -->
-					<div class="bg-gray-800 border-b border-gray-700 p-4">
+					<div class="bg-white border-b border-gray-200 px-6 py-4">
 						<div class="flex items-start justify-between">
 							<div class="flex-1">
-								<h2 class="text-xl font-semibold text-gray-100">{sessionData.metadata.swarm_name}</h2>
-								<div class="text-sm text-gray-400 mt-1">
+								<h2 class="text-lg font-light text-gray-900 tracking-tight">{sessionData.metadata.swarm_name}</h2>
+								<div class="text-sm text-gray-500 mt-1">
 									{sessionData.metadata.root_directory}
 								</div>
-								<div class="text-xs text-gray-500 font-mono mt-1">
+								<div class="text-xs text-gray-400 font-mono mt-1">
 									{decodeURIComponent(sessionData.id.replace(/\+/g, "/"))}
 								</div>
 							</div>
-							<div class="flex gap-4 text-sm">
+							<div class="flex gap-6 text-sm">
 								<div class="text-right">
-									<div class="text-gray-400">Messages</div>
-									<div class="text-lg font-semibold text-gray-100">{countVisibleMessages(sessionData.events)}</div>
+									<div class="text-gray-500 text-xs uppercase tracking-wide">Messages</div>
+									<div class="text-2xl font-light text-gray-900 tabular-nums">{countVisibleMessages(sessionData.events)}</div>
 								</div>
 								<div class="text-right">
-									<div class="text-gray-400">Duration</div>
-									<div class="text-lg font-semibold text-gray-100">{formatDuration(calculateSessionDuration(sessionData))}</div>
+									<div class="text-gray-500 text-xs uppercase tracking-wide">Duration</div>
+									<div class="text-2xl font-light text-gray-900 tabular-nums">{formatDuration(calculateSessionDuration(sessionData))}</div>
 								</div>
 							</div>
 						</div>
-						<div class="flex flex-wrap gap-2 mt-3">
+						<div class="flex flex-wrap gap-2 mt-4">
 							{#each availableAgents as agent}
 								<button
 									onclick={() => toggleAgent(agent)}
-									class="px-3 py-1 text-xs font-medium rounded-full border-2 transition-colors bg-transparent {selectedAgents.has(agent) ? '' : 'border-gray-600 text-gray-500 hover:border-gray-500 hover:text-gray-400'}"
+									class="px-3 py-1 text-xs font-light rounded-full border transition-colors bg-transparent {selectedAgents.has(agent) ? '' : 'border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700'}"
 									style={selectedAgents.has(agent) ? `border-color: ${getAgentBorderColor(agent)}; color: ${getAgentTextColor(agent)};` : ''}
 								>
 									{agent}
@@ -306,7 +306,7 @@
 
 					<!-- Events Stream with Minimap -->
 					<div class="flex-1 flex overflow-hidden">
-						<div bind:this={scrollContainer} class="flex-1 overflow-y-auto p-4 space-y-2">
+						<div bind:this={scrollContainer} class="flex-1 overflow-y-auto p-6 space-y-3">
 							{#each sessionData.events as event, i (event.event_id)}
 								{@const eventType = getEventType(event)}
 								{@const instanceInfo = getInstanceInfo(event)}

@@ -46,24 +46,24 @@
 	</div>
 {:else}
 	<!-- Regular message display -->
-	<div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+	<div class="bg-white rounded border border-gray-200 overflow-hidden">
 		<EventHeader {event} />
 
 		<!-- Event Content -->
-		<div class="p-4 space-y-2">
+		<div class="p-5 space-y-2">
 			{#if Array.isArray(content)}
 				{#each content as block, blockIdx}
 					<ContentBlock {block} {sessionId} eventIndex={eventIndex} {blockIdx} {expandedThinking} />
 				{/each}
 			{:else if isFileContent(content)}
-				<div class="bg-gray-900 rounded border border-gray-700 overflow-hidden">
-					<div class="bg-gray-800 px-3 py-1.5 border-b border-gray-700">
-						<span class="text-xs font-mono text-gray-400">File Content</span>
+				<div class="bg-gray-50 rounded border border-gray-200 overflow-hidden">
+					<div class="bg-white px-3 py-2 border-b border-gray-200">
+						<span class="text-xs font-mono text-gray-500 uppercase tracking-wide">File Content</span>
 					</div>
-					<pre class="text-xs text-gray-300 font-mono overflow-x-auto p-3">{content}</pre>
+					<pre class="text-xs text-gray-800 font-mono overflow-x-auto p-4 leading-relaxed">{content}</pre>
 				</div>
 			{:else}
-				<pre class="text-sm text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">{content}</pre>
+				<pre class="text-sm text-gray-800 whitespace-pre-wrap font-mono overflow-x-auto leading-relaxed">{content}</pre>
 			{/if}
 		</div>
 	</div>

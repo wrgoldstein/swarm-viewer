@@ -13,34 +13,34 @@
 	}
 </script>
 
-<aside class="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
-	<div class="p-4 border-b border-gray-700">
-		<h2 class="text-lg font-semibold text-gray-200">Sessions ({sessions.length})</h2>
+<aside class="w-80 bg-white border-r border-gray-200 flex flex-col">
+	<div class="px-6 py-4 border-b border-gray-200">
+		<h2 class="text-sm font-light text-gray-900 uppercase tracking-wide">Sessions <span class="text-gray-400">({sessions.length})</span></h2>
 	</div>
 	<div class="flex-1 overflow-y-auto">
 		{#each sessions as session}
 			<button
 				onclick={() => onSelectSession(session.id)}
-				class="w-full text-left p-4 border-b border-gray-700 hover:bg-gray-700 transition-colors relative {selectedSessionId === session.id ? 'bg-gray-700 border-l-4 border-blue-500' : ''}"
+				class="w-full text-left px-6 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors relative {selectedSessionId === session.id ? 'bg-gray-50 border-l-2 border-gray-900' : ''}"
 			>
 				<div class="flex items-start justify-between gap-2 mb-1">
-					<div class="font-semibold text-sm text-blue-300">
+					<div class="font-light text-sm text-gray-900">
 						{session.swarm_name || 'Unnamed Swarm'}
 					</div>
 					{#if session.active}
-						<span class="flex items-center gap-1 text-xs px-2 py-0.5 bg-green-900 text-green-300 rounded-full border border-green-700">
-							<span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+						<span class="flex items-center gap-1 text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full border border-gray-300">
+							<span class="w-1.5 h-1.5 bg-gray-900 rounded-full animate-pulse"></span>
 							Active
 						</span>
 					{/if}
 				</div>
-				<div class="text-xs text-gray-400 mb-2">
+				<div class="text-xs text-gray-500 mb-1 font-mono">
 					{formatTimestamp(session.timestamp)}
 				</div>
-				<div class="text-xs text-gray-500">
-					Duration: {formatDuration(session.duration_seconds)}
+				<div class="text-xs text-gray-400">
+					{formatDuration(session.duration_seconds)}
 				</div>
-				<div class="text-xs text-gray-600 truncate mt-1">
+				<div class="text-xs text-gray-400 truncate mt-1 font-mono">
 					{session.root_directory?.split('/').pop()}
 				</div>
 			</button>

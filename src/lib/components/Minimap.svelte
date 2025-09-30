@@ -89,7 +89,7 @@
 
 <div
 	id="minimap"
-	class="w-16 bg-gray-800 border-l border-gray-700 relative cursor-pointer flex-shrink-0"
+	class="w-16 bg-white border-l border-gray-200 relative cursor-pointer flex-shrink-0"
 	style="height: 100%;"
 	onclick={(e) => {
 		const rect = e.currentTarget.getBoundingClientRect();
@@ -113,7 +113,7 @@
 		{@const position = (i / visibleEvents.length) * 100}
 
 		<div
-			class="absolute w-full h-0.5 opacity-60 hover:opacity-100 transition-opacity"
+			class="absolute w-full h-px opacity-70 hover:opacity-100 transition-opacity"
 			style="top: {position}%; background-color: {color};"
 			title="{agent} - event {i + 1}"
 		></div>
@@ -121,7 +121,7 @@
 
 	<!-- Viewport indicator -->
 	<div
-		class="absolute w-full border-2 border-blue-400 bg-blue-400/20 pointer-events-none"
+		class="absolute w-full border border-gray-900 bg-gray-900/5 pointer-events-none"
 		style="top: {viewportIndicatorTop}%; height: {viewportIndicatorHeight}%;"
 	></div>
 </div>

@@ -31,26 +31,26 @@
 
 {#if compact}
 	<!-- Compact inline header for tool calls -->
-	<div class="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-750/50 rounded text-xs border border-gray-700/50">
+	<div class="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-50 rounded text-xs border border-gray-200">
 		{#if instanceInfo.to}
-			<span class="font-mono" style="color: {getAgentHexColor(instanceInfo.to)}">{instanceInfo.to}</span>
+			<span class="font-mono font-light" style="color: {getAgentHexColor(instanceInfo.to)}">{instanceInfo.to}</span>
 		{:else}
-			<span class="font-mono" style="color: {getAgentHexColor(instanceInfo.label)}">{instanceInfo.label}</span>
+			<span class="font-mono font-light" style="color: {getAgentHexColor(instanceInfo.label)}">{instanceInfo.label}</span>
 		{/if}
 	</div>
 {:else}
 	<!-- Full header for regular messages -->
-	<div class="flex items-center gap-3 px-4 py-2 bg-gray-750 border-b border-gray-700">
+	<div class="flex items-center gap-3 px-5 py-3 bg-gray-50 border-b border-gray-200">
 		{#if instanceInfo.to}
-			<span class="text-sm font-semibold">
+			<span class="text-sm font-light">
 				<span style="color: {getAgentHexColor(instanceInfo.from)}">{instanceInfo.from}</span>
 				<span class="text-gray-400"> → </span>
 				<span style="color: {getAgentHexColor(instanceInfo.to)}">{instanceInfo.to}</span>
 			</span>
 		{:else}
-			<span class="text-sm font-semibold" style="color: {getAgentHexColor(instanceInfo.label)}">{instanceInfo.label}</span>
+			<span class="text-sm font-light" style="color: {getAgentHexColor(instanceInfo.label)}">{instanceInfo.label}</span>
 		{/if}
-		<span class="text-xs text-gray-500 ml-auto">
+		<span class="text-xs text-gray-400 ml-auto font-mono">
 			{formatTimestamp(event.timestamp)}
 		</span>
 	</div>
