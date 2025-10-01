@@ -1,6 +1,35 @@
 <script>
 	let { sessions = [], selectedSessionId = null, onSelectSession } = $props();
 
+	const ITEMS_PER_PAGE = 20;
+	let currentPage = $state(1);
+
+	$effect(() => {
+		// Reset to page 1 when sessions change significantly
+		if (sessions.length > 0) {
+			const maxPage = Math.ceil(sessions.length / ITEMS_PER_PAGE);
+			if (currentPage > maxPage) {
+				currentPage = maxPage;
+			}
+		}
+	});
+
+	const paginatedSessions = $derived(() => {
+		const start = (currentPage - 1) * ITEMS_PER_PAGE;
+		const end = start + ITEMS_PER_PAGE;
+		return sessions.slice(start, end);
+	});
+
+	const totalPages = $derived(Math.ceil(sessions.length / ITEMS_PER_PAGE));
+
+	function nextPage() {
+		if (currentPage < totalPages) currentPage++;
+	}
+
+	function prevPage() {
+		if (currentPage > 1) currentPage--;
+	}
+
 	function formatTimestamp(timestamp) {
 		return new Date(timestamp).toLocaleString();
 	}
@@ -43,7 +72,7 @@
 		<h2 class="text-sm font-light text-gray-900 uppercase tracking-wide">Sessions <span class="text-gray-400">({sessions.length})</span></h2>
 	</div>
 	<div class="flex-1 overflow-y-auto">
-		{#each sessions as session}
+		{#each paginatedSessions() as session}
 			<button
 				onclick={() => onSelectSession(session.id)}
 				class="w-full text-left px-6 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors relative {selectedSessionId === session.id ? 'bg-gray-50 border-l-2 border-gray-900' : ''}"
@@ -71,4 +100,25 @@
 			</button>
 		{/each}
 	</div>
+	{#if totalPages > 1}
+		<div class="px-6 py-3 border-t border-gray-200 flex items-center justify-between bg-gray-50">
+			<button
+				onclick={prevPage}
+				disabled={currentPage === 1}
+				class="text-xs text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+			>
+				← Previous
+			</button>
+			<span class="text-xs text-gray-500 tabular-nums">
+				{currentPage} / {totalPages}
+			</span>
+			<button
+				onclick={nextPage}
+				disabled={currentPage === totalPages}
+				class="text-xs text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+			>
+				Next →
+			</button>
+		</div>
+	{/if}
 </aside>
