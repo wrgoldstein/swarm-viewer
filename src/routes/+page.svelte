@@ -337,7 +337,21 @@
 									<div class="text-gray-400 text-sm">No messages to display</div>
 								</div>
 							{:else}
-								{#each sessionData.events as event, i (event.event_id)}
+								{@const eventsWithToolDepth = (() => {
+									let toolDepth = 0;
+									return sessionData.events.map(event => {
+										const content = getMessageContent(event);
+										if (Array.isArray(content)) {
+											content.forEach(block => {
+												if (block.type === 'tool_use') toolDepth++;
+												if (block.type === 'tool_result') toolDepth = Math.max(0, toolDepth - 1);
+											});
+										}
+										return { event, toolDepth };
+									});
+								})()}
+
+								{#each eventsWithToolDepth as { event, toolDepth }, i (event.event_id)}
 									{@const eventType = getEventType(event)}
 									{@const instanceInfo = getInstanceInfo(event)}
 									{@const content = getMessageContent(event)}
@@ -347,10 +361,11 @@
 									{@const isSystemInit = eventType === 'system' && event.event?.subtype === 'init'}
 									{@const isSystemInstance = event.instance === 'system'}
 									{@const toolOutput = isToolOutput(event)}
+									{@const isUserMessageInToolContext = eventType === 'request' && instanceInfo.from === 'user' && toolDepth > 0}
 									{@const isVisible = !isSystemInit && !isSystemInstance && isAgentSelected(event) && hasVisibleContent(content) && (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !toolOutput)}
 
 									{#if isVisible}
-										<EventMessage {event} sessionId={decodeURIComponent(sessionData.id.replace(/\+/g, "/"))} eventIndex={i} {expandedThinking} />
+										<EventMessage {event} sessionId={decodeURIComponent(sessionData.id.replace(/\+/g, "/"))} eventIndex={i} {expandedThinking} {isUserMessageInToolContext} />
 									{/if}
 								{/each}
 							{/if}

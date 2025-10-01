@@ -2,7 +2,7 @@
 	import EventHeader from './EventHeader.svelte';
 	import ContentBlock from './ContentBlock.svelte';
 
-	let { event, sessionId, eventIndex, expandedThinking } = $props();
+	let { event, sessionId, eventIndex, expandedThinking, isUserMessageInToolContext = false } = $props();
 
 	function getMessageContent(event) {
 		if (event.event?.message?.content) {
@@ -47,23 +47,44 @@
 {:else}
 	<!-- Regular message display -->
 	<div class="bg-white rounded border border-gray-200 overflow-hidden">
-		<EventHeader {event} />
+		{#if !isUserMessageInToolContext}
+			<EventHeader {event} />
+		{/if}
 
 		<!-- Event Content -->
-		<div class="p-5 space-y-2">
-			{#if Array.isArray(content)}
-				{#each content as block, blockIdx}
-					<ContentBlock {block} {sessionId} eventIndex={eventIndex} {blockIdx} {expandedThinking} />
-				{/each}
-			{:else if isFileContent(content)}
+		<div class="p-5 space-y-2" class:pt-3={isUserMessageInToolContext}>
+			{#if isUserMessageInToolContext}
 				<div class="bg-gray-50 rounded border border-gray-200 overflow-hidden">
 					<div class="bg-white px-3 py-2 border-b border-gray-200">
-						<span class="text-xs font-mono text-gray-500 uppercase tracking-wide">File Content</span>
+						<span class="text-xs font-mono text-gray-500 uppercase tracking-wide">Tool Output</span>
 					</div>
-					<pre class="text-xs text-gray-800 font-mono overflow-x-auto p-4 leading-relaxed">{content}</pre>
+					<div class="p-4">
+						{#if Array.isArray(content)}
+							{#each content as block, blockIdx}
+								<ContentBlock {block} {sessionId} eventIndex={eventIndex} {blockIdx} {expandedThinking} />
+							{/each}
+						{:else if isFileContent(content)}
+							<pre class="text-xs text-gray-800 font-mono overflow-x-auto leading-relaxed">{content}</pre>
+						{:else}
+							<pre class="text-sm text-gray-800 whitespace-pre-wrap font-mono overflow-x-auto leading-relaxed">{content}</pre>
+						{/if}
+					</div>
 				</div>
 			{:else}
-				<pre class="text-sm text-gray-800 whitespace-pre-wrap font-mono overflow-x-auto leading-relaxed">{content}</pre>
+				{#if Array.isArray(content)}
+					{#each content as block, blockIdx}
+						<ContentBlock {block} {sessionId} eventIndex={eventIndex} {blockIdx} {expandedThinking} />
+					{/each}
+				{:else if isFileContent(content)}
+					<div class="bg-gray-50 rounded border border-gray-200 overflow-hidden">
+						<div class="bg-white px-3 py-2 border-b border-gray-200">
+							<span class="text-xs font-mono text-gray-500 uppercase tracking-wide">File Content</span>
+						</div>
+						<pre class="text-xs text-gray-800 font-mono overflow-x-auto p-4 leading-relaxed">{content}</pre>
+					</div>
+				{:else}
+					<pre class="text-sm text-gray-800 whitespace-pre-wrap font-mono overflow-x-auto leading-relaxed">{content}</pre>
+				{/if}
 			{/if}
 		</div>
 	</div>
