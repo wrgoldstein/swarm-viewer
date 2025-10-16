@@ -78,8 +78,15 @@
 				class="w-full text-left px-6 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors relative {selectedSessionId === session.id ? 'bg-gray-50 border-l-2 border-gray-900' : ''}"
 			>
 				<div class="flex items-start justify-between gap-2 mb-1">
-					<div class="font-light text-sm text-gray-900">
-						{session.swarm_name || 'Unnamed Swarm'}
+					<div class="flex items-center gap-2">
+						<div class="font-light text-sm text-gray-900">
+							{session.swarm_name || 'Unnamed Swarm'}
+						</div>
+						{#if session.type}
+							<span class="text-xs px-1.5 py-0.5 {session.type === 'swarm' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'} rounded">
+								{session.type}
+							</span>
+						{/if}
 					</div>
 					{#if session.active}
 						<span class="flex items-center gap-1 text-xs px-2 py-0.5 bg-gray-100 rounded-full border border-gray-300">

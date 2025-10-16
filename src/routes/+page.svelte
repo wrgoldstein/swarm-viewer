@@ -2,6 +2,7 @@
 	import { onMount, tick } from 'svelte';
 	import SessionList from '$lib/components/SessionList.svelte';
 	import EventMessage from '$lib/components/EventMessage.svelte';
+	import ClaudeMessage from '$lib/components/ClaudeMessage.svelte';
 	import Minimap from '$lib/components/Minimap.svelte';
 	import { getAgentTextColor, getAgentBgColor, getAgentBorderColor, resetColorAssignments } from '$lib/utils/agentColors.js';
 
@@ -17,10 +18,11 @@
 	let selectedAgents = $state(new Set());
 	let availableAgents = $state([]);
 	let currentTime = $state(Date.now());
+	let sessionType = $state('all'); // 'all', 'swarm', 'claude'
 
 	async function loadSessions() {
 		try {
-			const response = await fetch('/api/sessions');
+			const response = await fetch(`/api/sessions?type=${sessionType}`);
 			const data = await response.json();
 			// Filter out sessions shorter than 30 seconds
 			sessions = data.filter(session => !session.duration_seconds || session.duration_seconds >= 30);
@@ -109,9 +111,22 @@
 		if (!sessionData?.metadata) return null;
 
 		const startTime = new Date(sessionData.metadata.start_time).getTime();
-		const endTime = sessionData.metadata.end_time
-			? new Date(sessionData.metadata.end_time).getTime()
-			: now;
+
+		// For active sessions, use current time (ticking)
+		// For inactive sessions, use the last message timestamp
+		let endTime;
+		if (sessionData.metadata.active) {
+			endTime = now;
+		} else if (sessionData.metadata.end_time) {
+			endTime = new Date(sessionData.metadata.end_time).getTime();
+		} else {
+			// Find last message timestamp for inactive sessions
+			const events = sessionData.events || [];
+			const lastEvent = events
+				.filter(e => e.timestamp && (e.type === 'user' || e.type === 'assistant'))
+				.pop();
+			endTime = lastEvent ? new Date(lastEvent.timestamp).getTime() : now;
+		}
 
 		return Math.floor((endTime - startTime) / 1000);
 	}
@@ -143,6 +158,14 @@
 		selectedAgents = new Set(selectedAgents);
 	}
 
+	function toggleAutoScroll() {
+		autoScroll = !autoScroll;
+		// Immediately scroll to bottom when enabled
+		if (autoScroll && scrollContainer) {
+			scrollContainer.scrollTop = scrollContainer.scrollHeight;
+		}
+	}
+
 	$effect(() => {
 		if (autoScroll && scrollContainer) {
 			scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -152,16 +175,13 @@
 	onMount(() => {
 		loadSessions();
 
-		// Auto-refresh every 2 seconds if enabled
+		// Auto-refresh every 1 second if enabled
 		const interval = setInterval(() => {
 			if (autoRefresh) {
 				loadSessions();
-				// Only refresh session data if it's an active session
-				if (selectedSessionId && sessionData?.metadata?.active !== false) {
-					const currentSession = sessions.find(s => s.id === selectedSessionId);
-					if (currentSession?.active) {
-						loadSession(selectedSessionId);
-					}
+				// Refresh the currently selected session
+				if (selectedSessionId) {
+					loadSession(selectedSessionId);
 				}
 			}
 			// Update current time for live duration calculation
@@ -264,14 +284,19 @@
 	<!-- Header -->
 	<header class="bg-white border-b border-gray-200 px-6 py-4">
 		<div class="flex items-center justify-between">
-			<h1 class="text-xl tracking-tight text-gray-900">Claude Swarm</h1>
+			<h1 class="text-xl tracking-tight text-gray-900">Claude Sessions</h1>
 			<div class="flex items-center gap-4">
+				<select bind:value={sessionType} onchange={loadSessions} class="text-sm px-3 py-1 border border-gray-300 rounded bg-white text-gray-700">
+					<option value="all">All Sessions</option>
+					<option value="swarm">Swarm</option>
+					<option value="claude">Claude</option>
+				</select>
 				<label class="flex items-center gap-2 text-sm text-gray-600">
 					<input type="checkbox" bind:checked={autoRefresh} class="rounded border-gray-300" />
 					Auto-refresh
 				</label>
 				<label class="flex items-center gap-2 text-sm text-gray-600">
-					<input type="checkbox" bind:checked={autoScroll} class="rounded border-gray-300" />
+					<input type="checkbox" checked={autoScroll} onchange={toggleAutoScroll} class="rounded border-gray-300" />
 					Auto-scroll
 				</label>
 			</div>
@@ -352,20 +377,29 @@
 								})()}
 
 								{#each eventsWithToolDepth as { event, toolDepth }, i (event.event_id)}
-									{@const eventType = getEventType(event)}
-									{@const instanceInfo = getInstanceInfo(event)}
-									{@const content = getMessageContent(event)}
-									{@const previousEvent = i > 0 ? sessionData.events[i - 1] : null}
-									{@const isToolResult = isToolResultFollowingToolUse(event, previousEvent)}
-									{@const isAgentToAgentRequest = (eventType === 'request' && instanceInfo.from !== 'user') || isToolResult}
-									{@const isSystemInit = eventType === 'system' && event.event?.subtype === 'init'}
-									{@const isSystemInstance = event.instance === 'system'}
-									{@const toolOutput = isToolOutput(event)}
-									{@const isUserMessageInToolContext = eventType === 'request' && instanceInfo.from === 'user' && toolDepth > 0}
-									{@const isVisible = !isSystemInit && !isSystemInstance && isAgentSelected(event) && hasVisibleContent(content) && (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !toolOutput)}
+									{#if event.sessionType === 'claude'}
+										{@const isUserOrAssistant = event.type === 'user' || event.type === 'assistant'}
+										{@const isSelected = isAgentSelected(event)}
 
-									{#if isVisible}
-										<EventMessage {event} sessionId={decodeURIComponent(sessionData.id.replace(/\+/g, "/"))} eventIndex={i} {expandedThinking} {isUserMessageInToolContext} />
+										{#if isUserOrAssistant && isSelected}
+											<ClaudeMessage {event} {expandedThinking} />
+										{/if}
+									{:else}
+										{@const eventType = getEventType(event)}
+										{@const instanceInfo = getInstanceInfo(event)}
+										{@const content = getMessageContent(event)}
+										{@const previousEvent = i > 0 ? sessionData.events[i - 1] : null}
+										{@const isToolResult = isToolResultFollowingToolUse(event, previousEvent)}
+										{@const isAgentToAgentRequest = (eventType === 'request' && instanceInfo.from !== 'user') || isToolResult}
+										{@const isSystemInit = eventType === 'system' && event.event?.subtype === 'init'}
+										{@const isSystemInstance = event.instance === 'system'}
+										{@const toolOutput = isToolOutput(event)}
+										{@const isUserMessageInToolContext = eventType === 'request' && instanceInfo.from === 'user' && toolDepth > 0}
+										{@const isVisible = !isSystemInit && !isSystemInstance && isAgentSelected(event) && hasVisibleContent(content) && (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !toolOutput)}
+
+										{#if isVisible}
+											<EventMessage {event} sessionId={decodeURIComponent(sessionData.id.replace(/\+/g, "/"))} eventIndex={i} {expandedThinking} {isUserMessageInToolContext} />
+										{/if}
 									{/if}
 								{/each}
 							{/if}
