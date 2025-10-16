@@ -13,6 +13,7 @@
 	let error = $state(null);
 	let autoRefresh = $state(true);
 	let autoScroll = $state(false);
+	let showSystemMessages = $state(false);
 	let scrollContainer = $state(null);
 	let expandedThinking = $state(new Set());
 	let selectedAgents = $state(new Set());
@@ -140,19 +141,30 @@
 			const content = getMessageContent(event);
 			const previousEvent = i > 0 ? events[i - 1] : null;
 			const isToolResult = isToolResultFollowingToolUse(event, previousEvent);
-			const isAgentToAgentRequest = (eventType === 'request' && instanceInfo.from !== 'user') || isToolResult;
 			const isSystemInit = eventType === 'system' && event.event?.subtype === 'init';
 			const isSystemInstance = event.instance === 'system';
 			const toolOutput = isToolOutput(event);
 
-			return !isSystemInit && !isSystemInstance && hasVisibleContent(content) && (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !toolOutput);
+			// If showSystemMessages is enabled, don't filter out system messages
+			const hideSystem = !showSystemMessages && (isSystemInit || isSystemInstance);
+
+			return !hideSystem && hasVisibleContent(content) && (eventType !== 'result' && eventType !== 'system' && !isToolResult && !toolOutput);
 		}).length;
 	}
 
 	function toggleAgent(agent) {
-		if (selectedAgents.has(agent)) {
+		// If all agents are currently selected, select only this one
+		if (selectedAgents.size === availableAgents.length) {
+			selectedAgents = new Set([agent]);
+		} else if (selectedAgents.has(agent)) {
+			// If clicking on an already selected agent, deselect it
 			selectedAgents.delete(agent);
+			// If that was the last one, select all
+			if (selectedAgents.size === 0) {
+				selectedAgents = new Set(availableAgents);
+			}
 		} else {
+			// Otherwise, add the agent to selection
 			selectedAgents.add(agent);
 		}
 		selectedAgents = new Set(selectedAgents);
@@ -299,6 +311,10 @@
 					<input type="checkbox" checked={autoScroll} onchange={toggleAutoScroll} class="rounded border-gray-300" />
 					Auto-scroll
 				</label>
+				<label class="flex items-center gap-2 text-sm text-gray-600">
+					<input type="checkbox" bind:checked={showSystemMessages} class="rounded border-gray-300" />
+					Show system
+				</label>
 			</div>
 		</div>
 	</header>
@@ -390,12 +406,12 @@
 										{@const content = getMessageContent(event)}
 										{@const previousEvent = i > 0 ? sessionData.events[i - 1] : null}
 										{@const isToolResult = isToolResultFollowingToolUse(event, previousEvent)}
-										{@const isAgentToAgentRequest = (eventType === 'request' && instanceInfo.from !== 'user') || isToolResult}
 										{@const isSystemInit = eventType === 'system' && event.event?.subtype === 'init'}
 										{@const isSystemInstance = event.instance === 'system'}
 										{@const toolOutput = isToolOutput(event)}
 										{@const isUserMessageInToolContext = eventType === 'request' && instanceInfo.from === 'user' && toolDepth > 0}
-										{@const isVisible = !isSystemInit && !isSystemInstance && isAgentSelected(event) && hasVisibleContent(content) && (eventType !== 'result' && eventType !== 'system' && !isAgentToAgentRequest && !toolOutput)}
+										{@const hideSystem = !showSystemMessages && (isSystemInit || isSystemInstance)}
+										{@const isVisible = !hideSystem && isAgentSelected(event) && hasVisibleContent(content) && (eventType !== 'result' && eventType !== 'system' && !isToolResult && !toolOutput)}
 
 										{#if isVisible}
 											<EventMessage {event} sessionId={decodeURIComponent(sessionData.id.replace(/\+/g, "/"))} eventIndex={i} {expandedThinking} {isUserMessageInToolContext} />

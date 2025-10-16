@@ -111,9 +111,13 @@
 	const role = event.message?.role || event.type;
 	const isUser = role === 'user';
 	const isAssistant = role === 'assistant';
+
+	// Get border color for the agent
+	const agent = isUser ? 'user' : 'assistant';
+	const borderColor = getAgentBorderColor(agent);
 </script>
 
-<div class="message-container {isUser ? 'user-message' : 'assistant-message'}">
+<div class="message-container {isUser ? 'user-message' : 'assistant-message'}" style="border-left: 3px solid {borderColor};">
 	<!-- Role badge -->
 	<div class="flex items-center gap-2 mb-2">
 		<span

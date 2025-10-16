@@ -1,6 +1,7 @@
 <script>
 	import EventHeader from './EventHeader.svelte';
 	import ContentBlock from './ContentBlock.svelte';
+	import { getAgentBorderColor } from '$lib/utils/agentColors.js';
 
 	let { event, sessionId, eventIndex, expandedThinking, isUserMessageInToolContext = false } = $props();
 
@@ -32,6 +33,18 @@
 
 	const content = getMessageContent(event);
 	const isToolCallOnly = hasOnlyToolCalls(content);
+
+	// Get the agent/instance for this event
+	function getEventAgent() {
+		const eventType = event.event?.type || event.type;
+		if (eventType === 'request') {
+			return event.event?.from_instance || 'user';
+		}
+		return event.instance || 'system';
+	}
+
+	const agent = getEventAgent();
+	const borderColor = getAgentBorderColor(agent);
 </script>
 
 {#if isToolCallOnly}
@@ -46,7 +59,7 @@
 	</div>
 {:else}
 	<!-- Regular message display -->
-	<div class="bg-white rounded border border-gray-200 overflow-hidden">
+	<div class="bg-white rounded border border-gray-200 overflow-hidden" style="border-left: 3px solid {borderColor};">
 		{#if !isUserMessageInToolContext}
 			<EventHeader {event} />
 		{/if}
